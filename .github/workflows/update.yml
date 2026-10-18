@@ -76,7 +76,7 @@ jobs:
         run: |
           sudo rm -rf -- ./configs
           mkdir -p ./configs
-          curl --insecure -fsSL "https://raw.githubusercontent.com/AuxXxilium/arc-configs/main/platforms.yml" \
+          curl --insecure -fsSL "https://raw.githubusercontent.com/RROrg/rr/main/files/initrd/opt/rr/platforms.yml" \
             -o ./configs/platforms.yml
 
       - name: Update
