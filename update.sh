@@ -55,7 +55,7 @@ isVersionAtLeast72() {
   if [ "${MAJOR}" -gt 7 ]; then
     return 0
   fi
-  if [ "${MAJOR}" -eq 7 ] && [ "${MINOR}" -ge 2 ]; then
+  if [ "${MAJOR}" -eq 7 ] && [ "${MINOR}" -ge 0 ]; then
     return 0
   fi
   return 1
