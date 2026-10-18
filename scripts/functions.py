@@ -132,7 +132,7 @@ def getpats(workpath, jsonpath):
     collect_pages(
         "https://archive.synology.com/download/Os/DSM",
         "https://archive.synology.com/download/Os/DSM",
-        min_version=(7, 2)
+        min_version=(7, 0)
     )
 
     if not pages_to_scrape:
