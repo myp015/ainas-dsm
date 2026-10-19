@@ -34,6 +34,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@main
         with:
+          # 必须显式检出分支最新提交。默认检出的是 github.sha，
+          # 即 workflow_dispatch 触发时的那个提交；作为 update.yml 的后续作业运行时，
+          # 它会看不到前一个作业刚推送上去的 dsm/ 数据，重建结果等于旧数据，
+          # 提交步骤会判定 "No changes" 而什么都不做。
+          ref: ${{ github.ref_name }}
           fetch-depth: 1
           sparse-checkout: |
             dsm
