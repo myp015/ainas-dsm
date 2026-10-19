@@ -7,6 +7,11 @@
 
 name: Update Data
 
+# 仓库的 Actions 默认权限是只读，而 update.sh 每处理完一个版本就要 commit+push，
+# 不显式声明写权限会被拒（remote: Permission ... denied to github-actions[bot]）。
+permissions:
+  contents: write
+
 on:
   workflow_dispatch:
     inputs:

@@ -7,6 +7,10 @@
 
 name: Rebuild Data
 
+# 同 update.yml：仓库 Actions 默认权限为只读，重建后要 commit+push，必须显式申请写权限。
+permissions:
+  contents: write
+
 on:
   workflow_dispatch:
     inputs:

@@ -272,7 +272,9 @@ for PLATFORM in $(readTopLevelEntries "${TMP_PATH}/data.yml"); do
       fi
       git add "${HOME}/dsm/${MODEL}" "${HOME}/files/${MODEL}" "${HOME}/modules/${MODEL}"
       git commit -m "${MODEL} ${VERSION}: update $(date +%Y-%m-%d\ %H:%M:%S)" || true
-      git push || true
+      # push 不加 || true：推送失败（如 token 无写权限）必须立刻中断，
+      # 否则会一路跑到底却什么都没推上去，白白浪费整个作业时长。
+      git push
     done
   done
 done
