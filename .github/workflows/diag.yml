@@ -1,0 +1,67 @@
+#
+# 临时诊断工作流：排查 functions.py 的 PAT 探测在 GitHub runner 上为何长时间无输出。
+# 用完即删。
+#
+name: Diag
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: DNS
+        run: |
+          for h in global.synologydownload.com global.download.synology.com update7.synology.com archive.synology.com; do
+            echo "== ${h}"
+            getent hosts "${h}" || echo "   DNS FAIL"
+          done
+
+      - name: 单次 Range 探测
+        run: |
+          for h in global.synologydownload.com global.download.synology.com; do
+            echo "== ${h}"
+            curl -sS -o /dev/null -w '   code=%{http_code} time=%{time_total}s\n' \
+              -r 0-0 --max-time 30 \
+              "https://${h}/download/DSM/release/7.0.1/42218/DSM_DS1019%2B_42218.pat" \
+              || echo "   curl 失败"
+          done
+
+      - name: 并发探测（复刻 functions.py 的 session 配置）
+        run: |
+          sudo pip3 install -q requests urllib3
+          python3 - <<'PY'
+          import time, requests, urllib3
+          from concurrent.futures import ThreadPoolExecutor
+          from requests.adapters import HTTPAdapter
+          from requests.packages.urllib3.util.retry import Retry
+
+          urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+          adapter = HTTPAdapter(max_retries=Retry(total=3, backoff_factor=1, status_forcelist=[500, 502, 503, 504]))
+          session = requests.Session()
+          session.mount("http://", adapter)
+          session.mount("https://", adapter)
+          session.trust_env = False
+
+          def probe(url, timeout):
+              try:
+                  r = session.get(url, timeout=timeout, verify=False, stream=True,
+                                  headers={"Range": "bytes=0-0"})
+                  c = r.status_code
+                  r.close()
+                  return c
+              except Exception as e:
+                  return type(e).__name__
+
+          for host in ("global.synologydownload.com", "global.download.synology.com"):
+              urls = [f"https://{host}/download/DSM/release/7.0.1/42218/DSM_DS1019%2B_42218.pat"] * 64
+              t0 = time.time()
+              with ThreadPoolExecutor(max_workers=32) as pool:
+                  codes = list(pool.map(lambda u: probe(u, (5, 10)), urls))
+              el = time.time() - t0
+              from collections import Counter
+              print(f"== {host}  64 请求/32 并发  耗时 {el:.1f}s")
+              for k, v in Counter(codes).most_common():
+                  print(f"     {k}: {v}")
+          PY
