@@ -71,7 +71,10 @@ jobs:
           sudo chmod +x /usr/local/bin/yq
           PYTHON_LIB="$(dirname "$(realpath "$(which python3)")")"
           sudo mv -f "${PYTHON_LIB}/EXTERNALLY-MANAGED" "${PYTHON_LIB}/EXTERNALLY-MANAGED.bak" 2>/dev/null || true
-          sudo pip3 install -q -U -r scripts/requirements.txt
+          # --ignore-installed：apt 装的 python 包（如 click）没有 RECORD 文件，
+          # pip 升级时会先尝试卸载，然后以 "Cannot uninstall ... no RECORD file was found"
+          # 失败。加上它就能直接覆盖安装到 /usr/local，不再碰系统包。
+          sudo pip3 install -q -U --ignore-installed -r scripts/requirements.txt
 
       - name: Clean Files
         if: inputs.cleanfiles == true
