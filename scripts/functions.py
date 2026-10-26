@@ -17,8 +17,9 @@ import xml.etree.ElementTree as ET
 # 下载路径版本 = major.minor[.patch]，即 Synology 下载路径里的那一级目录名，
 # 例如 7.2.1-69057 对应 ("7.2.1", "69057")，7.0.1-42218 对应 ("7.0.1", "42218")。
 # 只有命中白名单的 build 会被抓取；命中后该 build 下所有真实可下载的 nano（更新号）都会收录。
-# 需要增删版本时只改这里。
+# 需要增删版本时只改这里，不要再加"最低版本"之类的数值判断——白名单本身就是唯一过滤条件。
 TARGET_BUILDS = {
+    ("6.2.4", "25556"),
     ("7.0.1", "42218"),
     ("7.1.1", "42962"),
     ("7.2.1", "69057"),
@@ -134,8 +135,6 @@ def getpats(workpath, jsonpath):
     entries = []
     for m in index_pat.finditer(r.text):
         major, minor = int(m.group(1)), int(m.group(2))
-        if (major, minor) < (7, 0):
-            continue
         key = (major, minor, m.group(3) or "0", m.group(4), m.group(5) or "0")
         if key not in seen:
             seen.add(key)
