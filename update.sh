@@ -9,7 +9,7 @@
 
 set -e
 
-# --- Config ---
+# 路径配置
 HOME="$(pwd)"
 TMP_PATH="${HOME}/data"
 CACHE_PATH="${HOME}/cache"
@@ -20,7 +20,7 @@ MODULESFILESPATH="${HOME}/modules"
 EXTRACTOR_PATH="${HOME}/extractor"
 EXTRACTOR_BIN="syno_extract_system_patch"
 
-# --- Helper Functions ---
+# 辅助函数
 writeConfigKey() {
   if [ "${2}" = "{}" ]; then
     yq eval ".${1} = {}" --inplace "${3}" 2>/dev/null
@@ -156,7 +156,7 @@ getDSM() {
     fi
   fi
 
-  # zImage is required; abort if missing
+  # zImage 缺失说明 PAT 不完整，跳过该型号，避免单个坏包中断整批
   if [ ! -f "${UNTAR_PAT_PATH}/zImage" ]; then
     echo "Error: zImage not found in PAT, skipping"
     rm -f "${PAT_PATH}"; rm -rf "${UNTAR_PAT_PATH}"
@@ -218,11 +218,11 @@ getDSM() {
   cd "${HOME}"
 }
 
-# --- Main ---
+# 主流程
 rm -rf "${TMP_PATH}" "${CACHE_PATH}"
 mkdir -p "${TMP_PATH}" "${CACHE_PATH}" "configs"
 
-# --- Get configs ---
+# 获取机型配置
 if [ ! -f "configs/platforms.yml" ]; then
   TAG="$(curl --insecure -m 10 -s https://api.github.com/repos/AuxXxilium/arc-configs/releases/latest | grep "tag_name" | awk '{print substr($2, 2, length($2)-3)}')"
   curl --insecure -s -L "https://github.com/AuxXxilium/arc-configs/releases/download/${TAG}/configs-${TAG}.zip" -o "configs.zip"
@@ -230,14 +230,14 @@ if [ ! -f "configs/platforms.yml" ]; then
   rm -f "configs.zip"
 fi
 
-# --- Git identity ---
+# Git 提交身份
 git config --global user.email "info@auxxxilium.tech"
 git config --global user.name "AuxXxilium"
 
-# --- Get PATs ---
+# 抓取 PAT 列表
 python3 scripts/functions.py getpats -w "." -j "${TMP_PATH}/data.yml"
 
-# --- Merge missing entries from backup ---
+# 从备份 data.yml 补齐缺失条目
 BACKUP_DATA_URL="${BACKUP_DATA_URL:-https://github.com/AuxXxilium/arc-dsm/raw/refs/heads/backup/data.yml}"
 if [ -n "${BACKUP_DATA_URL}" ]; then
   BACKUP_URL_DATA_PATH="${TMP_PATH}/backup-url-data.yml"
@@ -248,7 +248,7 @@ if [ -n "${BACKUP_DATA_URL}" ]; then
   fi
 fi
 
-# --- Process each platform/model/version ---
+# 逐个平台/型号/版本处理
 for PLATFORM in $(readTopLevelEntries "${TMP_PATH}/data.yml"); do
   echo "Processing platform: ${PLATFORM}"
   for MODEL in $(readConfigEntriesArray "${PLATFORM}" "${TMP_PATH}/data.yml"); do

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2025 AuxXxilium <https://github.com/AuxXxilium>
 #
@@ -43,7 +42,6 @@ def cli():
 @click.option("-w", "--workpath", type=str, required=True, help="Working directory (must contain configs/platforms.yml).")
 @click.option("-j", "--jsonpath", type=str, required=True, help="Output YAML file path.")
 def getpats(workpath, jsonpath):
-    # --- Load supported platforms ---
     platforms_yml = os.path.join(workpath, "configs", "platforms.yml")
     try:
         with open(platforms_yml, "r", encoding="utf-8") as f:
@@ -58,7 +56,6 @@ def getpats(workpath, jsonpath):
         click.echo("No supported platforms found in platforms.yml", err=True)
         return
 
-    # --- Session setup ---
     adapter = HTTPAdapter(max_retries=Retry(total=3, backoff_factor=1, status_forcelist=[500, 502, 503, 504]))
     session = requests.Session()
     session.mount("http://", adapter)
@@ -66,7 +63,7 @@ def getpats(workpath, jsonpath):
     session.trust_env = False
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-    # --- Step 1: RSS → 机型映射 + DSM_Enterprise PAT ---
+    # Step 1: RSS → 机型映射 + DSM_Enterprise PAT
     # model_platforms: 小写裸机型名 -> [platform]，裸机型名即 mUnique 去掉 synology_<platform>_ 后的部分
     # canonical: (platform, 小写裸机型名) -> 完整机型名（如 DS918+）
     #   增量包命名 synology_<platform>_<裸机型名>.pat 与 RSS mUnique 同构，
@@ -121,7 +118,7 @@ def getpats(workpath, jsonpath):
         click.echo("No models found in RSS feed", err=True)
         return
 
-    # --- Step 2: archive 索引页 → 白名单内的版本页 ---
+    # Step 2: archive 索引页 → 白名单内的版本页
     # 每项为 (页面 URL, 版本串, 下载路径版本, build, nano)，版本串即 dsm/ 下的目录名
     try:
         r = session.get("https://archive.synology.com/download/Os/DSM", timeout=15, verify=False)
@@ -155,7 +152,7 @@ def getpats(workpath, jsonpath):
         click.echo("No archive pages matched TARGET_BUILDS", err=True)
         return
 
-    # --- Step 3: 收集候选完整 PAT 地址 ---
+    # Step 3: 收集候选完整 PAT 地址
     # 两个来源：
     #   a) 版本页直接列出的 /download/DSM/release/*.pat —— 基础版本页（nano=0）通常列全
     #   b) 版本页上的增量包 /download/DSM/criticalupdate/update_pack/<build>-<nano>/synology_<platform>_<裸机型名>.pat
@@ -171,7 +168,6 @@ def getpats(workpath, jsonpath):
             continue
         seg = f"{build}-{nano}" if nano != "0" else build
 
-        # a) 页面直接列出的完整 release PAT
         for m in re.finditer(r'href=["\']?(https://[^"\']*\.pat|/download/[^"\']*\.pat)["\']?', r.text):
             link = m.group(1)
             if not link.startswith("http"):
@@ -201,7 +197,6 @@ def getpats(workpath, jsonpath):
             for platform in model_platforms[lookup_key]:
                 candidates[(platform, model_name, version_str)] = link
 
-        # b) 增量包反推完整 release PAT
         for m in re.finditer(r'update_pack/[0-9]+-[0-9]+/synology_([a-z0-9]+)_([^"\']+?)\.pat', r.text):
             platform = m.group(1).lower()
             if platform not in supported_platforms:
@@ -219,7 +214,7 @@ def getpats(workpath, jsonpath):
         click.echo("No PAT candidates found", err=True)
         return
 
-    # --- Step 4: 探测候选地址，只保留真正可下载的 ---
+    # Step 4: 探测候选地址，只保留真正可下载的
     # 反推地址里有一部分在 CDN 上返回 403/404（例如 7.2.1-69057-1 的 DS620slim，
     # 增量包存在但完整 PAT 没有）。直接收录会让 update.sh 每次都下载失败，所以先确认。
     def probe(url, timeout):
@@ -259,7 +254,7 @@ def getpats(workpath, jsonpath):
 
     click.echo(f"PAT candidates: {len(candidates)}, available: {kept}")
 
-    # --- Inject DSM_Enterprise entries (version string derived from RSS ReqMajorVer.ReqMinorVer) ---
+    # 注入 DSM_Enterprise 条目（版本串取自 RSS 的 ReqMajorVer.ReqMinorVer）
     seen_enterprise = set()
     for (platform, cased_name, version_str, url) in enterprise_pats:
         key = (platform, cased_name, version_str)
@@ -271,7 +266,7 @@ def getpats(workpath, jsonpath):
             "hash": ""
         }
 
-    # --- Write output YAML ---
+    # 写出 YAML
     class QuotedStr(str):
         pass
 
